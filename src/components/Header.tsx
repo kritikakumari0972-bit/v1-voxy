@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
                 activeTab === 'explore' ? 'text-white border-b-2 border-rose-500 font-semibold' : 'text-slate-400'
               }`}
             >
-              Explore 10,000+
+              Explore
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setShowSearchModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Search 10,000+ Anime"
+              title="Search Anime Anime"
             >
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <span className="hidden sm:inline">Search...</span>
@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('explore')}
             className={`cursor-pointer ${activeTab === 'explore' ? 'text-rose-500 font-semibold' : ''}`}
           >
-            10,000+
+            Anime
           </button>
           <button
             onClick={() => setActiveTab('schedule')}
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="text-sm font-semibold text-white flex items-center gap-2">
-                <Search className="w-4 h-4 text-rose-500" /> Search 10,000+ Anime (Hindi Dub & Sub)
+                <Search className="w-4 h-4 text-rose-500" /> Search anime
               </span>
               <button
                 onClick={() => setShowSearchModal(false)}

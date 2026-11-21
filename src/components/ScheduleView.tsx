@@ -28,13 +28,13 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ onPlay, onViewDetail
       {/* Header */}
       <div className="mb-8">
         <div className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <Calendar className="w-4 h-4" /> Weekly Simulcast & Airing Calendar
+          <Calendar className="w-4 h-4" /> Anime release schedule preview
         </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           Anime Release Schedule (Hindi Dub & Sub)
         </h2>
         <p className="text-sm text-slate-400 mt-1">
-          Track when new episodes and Hindi dub releases drop throughout the week.
+          This section is a curated preview, not a live release feed. Confirm dates and audio availability with the publisher.
         </p>
       </div>
 
@@ -80,9 +80,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ onPlay, onViewDetail
                 <div>
                   <div className="flex items-center gap-2 text-xs text-amber-400 font-medium mb-1">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Air Time: {(idx * 2 + 18) % 24}:30 IST (Indian Standard Time)</span>
+                    <span>Release time: Not verified</span>
                     <span aria-hidden="true" className="text-slate-600">·</span>
-                    <span className="text-emerald-400">Hindi Dub Simulcast</span>
+                    <span className="text-slate-400">Audio: Not verified</span>
                   </div>
                   <h3
                     onClick={() => onViewDetails(anime)}
@@ -116,7 +116,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ onPlay, onViewDetail
                   className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white rounded-lg transition-colors shadow-md shadow-rose-600/20 cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Watch Free</span>
+                  <span>Viewing options</span>
                 </button>
               </div>
 

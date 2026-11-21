@@ -15,6 +15,13 @@ export interface StreamSource {
   hasHindiAudio: boolean;
   hasEnglishAudio: boolean;
   hasJapaneseAudio: boolean;
+  rightsStatus?: 'verified' | 'unverified';
+  rightsEvidenceUrl?: string;
+  territories?: string[];
+  audioLanguages?: AudioLanguage[];
+  free?: boolean;
+  adFree?: boolean;
+  expiresAt?: string;
 }
 
 export interface HindiSource {
@@ -69,6 +76,9 @@ export interface Anime {
   trailerEmbedUrl?: string;
   hindiDub: {
     isAvailable: boolean;
+    verificationStatus?: 'verified' | 'unverified';
+    evidenceUrl?: string;
+    territories?: string[];
     voiceActors?: HindiVoiceActor[];
     studio?: string;
     seasonsDubbed?: string;
@@ -86,6 +96,7 @@ export interface WatchHistoryItem {
   durationSeconds: number;
   lastWatchedAt: number;
   selectedAudio: AudioLanguage;
+  animeSnapshot?: Anime;
 }
 
 export interface FilterState {

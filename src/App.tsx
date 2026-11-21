@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Anime, WatchHistoryItem, AudioLanguage } from './types/anime';
+import { Anime, WatchHistoryItem } from './types/anime';
 import { CURATED_ANIME, COLLECTION_BANNER } from './data/curatedAnime';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
@@ -17,10 +17,21 @@ import { ScheduleView } from './components/ScheduleView';
 import { WatchlistView } from './components/WatchlistView';
 import { Footer } from './components/Footer';
 import { Play, Sparkles, Volume2, Flame, ArrowRight } from 'lucide-react';
+import { isHindiDubVerified } from './services/animeTrust';
+import { getTopAnimeList } from './services/jikanApi';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'hindi' | 'explore' | 'schedule' | 'watchlist'>('home');
   const [searchQuery, setSearchQuery] = useState('');
+  const [trendingList, setTrendingList] = useState<Anime[]>(CURATED_ANIME.slice(0, 6));
+
+  useEffect(() => {
+    let cancelled = false;
+    getTopAnimeList(1, 'bypopularity').then((items) => {
+      if (!cancelled && items.length) setTrendingList(items.slice(0, 6));
+    });
+    return () => { cancelled = true; };
+  }, []);
   
   // Player state
   const [playingAnime, setPlayingAnime] = useState<Anime | null>(null);
@@ -33,27 +44,18 @@ export default function App() {
   const [watchlist, setWatchlist] = useState<Anime[]>(() => {
     try {
       const saved = localStorage.getItem('anihindi_watchlist');
-      return saved ? JSON.parse(saved) : [CURATED_ANIME[0], CURATED_ANIME[1], CURATED_ANIME[3]];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return [CURATED_ANIME[0], CURATED_ANIME[1]];
+      return [];
     }
   });
 
   const [history, setHistory] = useState<WatchHistoryItem[]>(() => {
     try {
       const saved = localStorage.getItem('anihindi_history');
-      return saved ? JSON.parse(saved) : [
-        {
-          animeId: CURATED_ANIME[0].id,
-          animeTitle: CURATED_ANIME[0].titleEnglish || CURATED_ANIME[0].title,
-          animeImage: CURATED_ANIME[0].image,
-          episodeNumber: 1,
-          progressSeconds: 840,
-          durationSeconds: 1425,
-          lastWatchedAt: Date.now() - 3600000,
-          selectedAudio: 'Hindi',
-        }
-      ];
+      const parsed = saved ? JSON.parse(saved) : [];
+      // Previous versions generated placeholder progress. Keep only entries created by the real-time player.
+      return Array.isArray(parsed) ? parsed.filter((item) => item?.animeSnapshot) : [];
     } catch {
       return [];
     }
@@ -90,31 +92,29 @@ export default function App() {
   };
 
   const handleUpdateHistory = (item: {
-    animeId: number;
+    anime: Anime;
     episodeNumber: number;
     progressSeconds: number;
     durationSeconds: number;
-    selectedAudio: AudioLanguage;
+    selectedAudio: import('./types/anime').AudioLanguage;
   }) => {
-    const currentAnime = playingAnime || CURATED_ANIME.find((a) => a.id === item.animeId);
-    if (!currentAnime) return;
-
-    setHistory((prev) => {
-      const filtered = prev.filter(
-        (h) => !(h.animeId === item.animeId && h.episodeNumber === item.episodeNumber)
-      );
-      const newItem: WatchHistoryItem = {
-        animeId: item.animeId,
-        animeTitle: currentAnime.titleEnglish || currentAnime.title,
-        animeImage: currentAnime.image,
-        episodeNumber: item.episodeNumber,
-        progressSeconds: item.progressSeconds,
-        durationSeconds: item.durationSeconds,
-        lastWatchedAt: Date.now(),
-        selectedAudio: item.selectedAudio,
-      };
-      return [newItem, ...filtered].slice(0, 20);
-    });
+    const newItem: WatchHistoryItem = {
+      animeId: item.anime.id,
+      animeTitle: item.anime.titleEnglish || item.anime.title,
+      animeImage: item.anime.image,
+      episodeNumber: item.episodeNumber,
+      progressSeconds: item.progressSeconds,
+      durationSeconds: item.durationSeconds,
+      lastWatchedAt: Date.now(),
+      selectedAudio: item.selectedAudio,
+      animeSnapshot: item.anime
+    };
+    setHistory((previous) => [
+      newItem,
+      ...previous.filter((entry) =>
+        !(entry.animeId === newItem.animeId && entry.episodeNumber === newItem.episodeNumber)
+      )
+    ].slice(0, 20));
   };
 
   const handleClearHistory = () => {
@@ -134,19 +134,21 @@ export default function App() {
   };
 
   const handleRandomAnime = () => {
-    const randomIdx = Math.floor(Math.random() * CURATED_ANIME.length);
-    const chosen = CURATED_ANIME[randomIdx];
+    const choices = trendingList.length ? trendingList : CURATED_ANIME;
+    const randomIdx = Math.floor(Math.random() * choices.length);
+    const chosen = choices[randomIdx];
     handlePlay(chosen, 1);
   };
 
   const findAnimeById = (id: number) => {
-    return CURATED_ANIME.find((a) => a.id === id);
+    return CURATED_ANIME.find((anime) => anime.id === id) ||
+      watchlist.find((anime) => anime.id === id) ||
+      history.find((item) => item.animeId === id)?.animeSnapshot;
   };
 
   // Curated lists
   const featuredMarquee = CURATED_ANIME[0]; // Solo Leveling
-  const hindiDubbedList = CURATED_ANIME.filter((a) => a.hindiDub.isAvailable);
-  const trendingList = CURATED_ANIME.slice(0, 6);
+  const hindiDubbedList = CURATED_ANIME.filter(isHindiDubVerified);
   const shounenFavorites = CURATED_ANIME.filter((a) => a.genres.includes('Shounen') || a.genres.includes('Action')).slice(0, 6);
 
   return (
@@ -247,7 +249,7 @@ export default function App() {
                   onClick={() => setActiveTab('explore')}
                   className="text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer flex items-center gap-1"
                 >
-                  <span>Explore All 10,000+</span>
+                  <span>Explore Anime</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -308,7 +310,7 @@ export default function App() {
               </div>
             </section>
 
-            {/* Big 10,000+ Anime CTA Banner */}
+            {/* Anime Catalogue CTA Banner */}
             <section className="py-12 px-4 sm:px-8 max-w-7xl mx-auto">
               <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="max-w-xl">
@@ -316,7 +318,7 @@ export default function App() {
                     Full Anime Universe
                   </span>
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 mb-3">
-                    Looking for a Specific Anime? Search 10,000+ Titles
+                    Looking for a Specific Anime? Search titles
                   </h2>
                   <p className="text-sm text-slate-300 leading-relaxed mb-6">
                     From 90s classics like Dragon Ball Z and Beyblade to the latest winter 2025 simulcasts. Filter by Hindi Dub, genre, movies, or TV series.
@@ -325,7 +327,7 @@ export default function App() {
                     onClick={() => setActiveTab('explore')}
                     className="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-rose-600/30 cursor-pointer"
                   >
-                    Open 10,000+ Anime Explorer
+                    Open Anime Explorer
                   </button>
                 </div>
 
@@ -353,7 +355,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab: 10,000+ Explorer */}
+        {/* Tab: Anime Explorer */}
         {activeTab === 'explore' && (
           <CatalogExplorer
             initialSearchQuery={searchQuery}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Bookmark, Star, Volume2 } from 'lucide-react';
 import { Anime } from '../types/anime';
+import { isHindiDubVerified } from '../services/animeTrust';
 
 interface AnimeCardProps {
   anime: Anime;
@@ -21,7 +22,7 @@ export const AnimeCard: React.FC<AnimeCardProps> = ({
   const [imageError, setImageError] = useState(false);
 
   const displayTitle = anime.titleEnglish || anime.title;
-  const isHindi = anime.hindiDub.isAvailable;
+  const isHindi = isHindiDubVerified(anime);
 
   return (
     <div className="group relative flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-xl overflow-hidden hover:border-slate-700 hover:shadow-xl hover:shadow-black/50 transition-all duration-300">
@@ -83,7 +84,7 @@ export const AnimeCard: React.FC<AnimeCardProps> = ({
               onPlay(anime);
             }}
             className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 transform hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="Watch Online Free"
+            title="Open viewing options"
           >
             <Play className="w-5 h-5 fill-current ml-0.5" />
           </button>
@@ -147,7 +148,7 @@ export const AnimeCard: React.FC<AnimeCardProps> = ({
             onClick={() => onPlay(anime)}
             className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer text-xs flex items-center gap-1"
           >
-            <span>Play</span>
+            <span>Options</span>
             <span>→</span>
           </button>
         </div>

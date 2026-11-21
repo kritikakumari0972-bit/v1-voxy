@@ -22,11 +22,11 @@ export const Footer: React.FC<FooterProps> = ({ onSelectGenre, onNavigateTab }) 
             </span>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed mb-4">
-            India&apos;s premier platform to stream 10,000+ anime online free with Hindi dubbed audio tracks, high definition streaming, and weekly simulcast releases.
+            Anime discovery with searchable metadata, episode guides, trailers, a local watchlist, and transparent viewing options.
           </p>
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Zero Subscription · High Speed CDN</span>
+            <span>Metadata-first · Evidence-based labels</span>
           </div>
         </div>
 
@@ -49,7 +49,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectGenre, onNavigateTab }) 
                 onClick={() => onNavigateTab('hindi')}
                 className="hover:text-amber-400 transition-colors cursor-pointer text-amber-300/90 font-medium"
               >
-                Hindi Dubbed Vault (हिन्दी)
+                Verified Hindi Audio
               </button>
             </li>
             <li>
@@ -57,7 +57,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectGenre, onNavigateTab }) 
                 onClick={() => onNavigateTab('explore')}
                 className="hover:text-white transition-colors cursor-pointer"
               >
-                Explore 10,000+ Anime
+                Explore Anime
               </button>
             </li>
             <li>
@@ -107,7 +107,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectGenre, onNavigateTab }) 
             Disclaimer & Rights
           </h4>
           <p className="text-[11px] text-slate-500 leading-relaxed mb-3">
-            AniHindi is an anime discovery and streaming portal. Video embeds and streams are indexed from publicly accessible video hosts and official promotional anime distributors. All anime trademarks and characters belong to their respective studios and creators.
+            AniHindi is an anime discovery catalogue. Metadata and episode listings are provided for reference; no episode stream is inferred from catalogue IDs. Playback is available only for sources that have been reviewed for rights, territory, free/ad-free terms, and audio language. All anime trademarks and characters belong to their respective owners.
           </p>
           <div className="text-[11px] text-slate-500">
             Support official anime releases on Crunchyroll, Muse Asia, and licensed broadcast partners.
@@ -121,11 +121,11 @@ export const Footer: React.FC<FooterProps> = ({ onSelectGenre, onNavigateTab }) 
           © {new Date().getFullYear()} AniHindi. Built for anime fans worldwide.
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span>1080p Ultra HD</span>
+          <span>Anime metadata</span>
           <span aria-hidden="true">·</span>
-          <span>Dual Audio</span>
+          <span>Verified audio only</span>
           <span aria-hidden="true">·</span>
-          <span>Zero Ads Player</span>
+          <span>Rights-reviewed playback</span>
         </div>
       </div>
     </footer>

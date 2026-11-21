@@ -1,151 +1,190 @@
 import { Anime } from '../types/anime';
-import { CURATED_ANIME, createAnimeStreams } from '../data/curatedAnime';
+import { CURATED_ANIME } from '../data/curatedAnime';
 
 const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
-const cache = new Map<string, { data: Anime[]; timestamp: number }>();
-const CACHE_TTL_MS = 1000 * 60 * 10; // 10 minutes
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const cache = new Map<string, { value: unknown; timestamp: number }>();
+let requestQueue: Promise<unknown> = Promise.resolve();
+let nextRequestAt = 0;
 
-// Map known Hindi dubbed anime titles for automatic authentic Hindi title translations
-const KNOWN_HINDI_TITLES: Record<string, string> = {
-  'solo leveling': 'सोलो लेवलिंग (अराइज)',
-  'jujutsu kaisen': 'जुजुत्सु काइसेन',
-  'demon slayer': 'डिमॉन स्लेयर: किमेत्सु नो याइबा',
-  'kimetsu no yaiba': 'डिमॉन स्लेयर: किमेत्सु नो याइबा',
-  'naruto': 'नारुतो (मूल टीवी श्रृंखला)',
+const HINDI_TITLES: Record<string, string> = {
+  'solo leveling': 'सोलो लेवलिंग',
+  'naruto': 'नारुतो',
   'naruto shippuden': 'नारुतो: शिपुडेन',
-  'naruto: shippuuden': 'नारुतो: शिपुडेन',
   'dragon ball z': 'ड्रैगन बॉल ज़ेड',
   'dragon ball super': 'ड्रैगन बॉल सुपर',
+  'demon slayer: kimetsu no yaiba': 'डिमॉन स्लेयर: किमेत्सु नो याइबा',
+  'jujutsu kaisen': 'जुजुत्सु काइसेन',
   'death note': 'डेथ नोट',
-  'attack on titan': 'अटैक ऑन टाइटन',
-  'shingeki no kyojin': 'अटैक ऑन टाइटन',
   'one piece': 'वन पीस',
   'one punch man': 'वन पंच मैन',
-  'chainsaw man': 'चेनसॉ मैन',
+  'attack on titan': 'अटैक ऑन टाइटन',
+  'bleach': 'ब्लीच',
   'spy x family': 'स्पाई एक्स फैमिली',
-  'bleach': 'ब्लीच (थाउजेंड ईयर ब्लड वॉर)',
-  'hunter x hunter': 'हंटर एक्स हंटर',
-  'my hero academia': 'माई हीरो एकेडेमिया',
-  'boku no hero academia': 'माई हीरो एकेडेमिया',
-  'beyblade': 'बेब्लेड',
-  'doraemon': 'डोरेमोन (क्लासिक)',
-  'shin-chan': 'शिनचैन (क्रेयॉन शिनचैन)',
-  'crayon shin-chan': 'शिनचैन (क्रेयॉन शिनचैन)',
-  'detective conan': 'डिटेक्टिव कोनन',
-  'black clover': 'ब्लैक क्लोवर',
-  'tokyo ghoul': 'टोक्यो घूल',
+  'chainsaw man': 'चेनसॉ मैन',
+  'haikyu!!': 'हाइक्यू!!',
   'blue lock': 'ब्लू लॉक',
-  'vinland saga': 'विनलैंड सागा',
-  'kaiju no. 8': 'काइजू नंबर 8',
-  'dr. stone': 'डॉ. स्टोन',
-  'wind breaker': 'विंड ब्रेकर',
-  'mashle': 'मैशले: मैजिक एंड मसल्स',
-  'haikyuu': 'हाइक्यू!!',
-  'steins;gate': 'स्टाइन्स;गेट',
-  'fullmetal alchemist': 'फुलमेटल अल्केमिस्ट: ब्रदरहुड',
-  'sword art online': 'स्वॉर्ड आर्ट ऑनलाइन',
-  'fairy tail': 'फेयरी टेल',
-  'classroom of the elite': 'क्लासरूम ऑफ द एलीट',
-  're:zero': 'री:ज़ीरो',
-  'mushoku tensei': 'मुशोकु तेन्सेई',
-  'frieren': 'फ्रीरेन: बियॉन्ड जर्नीज़ एंड',
-  'dandadan': 'दंडादान',
+  'doraemon': 'डोरेमोन',
+  'crayon shin-chan': 'क्रेयॉन शिन-चैन'
 };
 
-export function getHindiTitle(title: string): string {
-  const lower = title.toLowerCase();
-  for (const [key, val] of Object.entries(KNOWN_HINDI_TITLES)) {
-    if (lower.includes(key)) {
-      return val;
+const GENRE_IDS: Record<string, number> = {
+  action: 1,
+  adventure: 2,
+  avantgarde: 5,
+  'award winning': 46,
+  comedy: 4,
+  drama: 8,
+  fantasy: 10,
+  gourmet: 47,
+  horror: 14,
+  mystery: 7,
+  romance: 22,
+  'sci-fi': 24,
+  'slice of life': 36,
+  sports: 30,
+  supernatural: 37,
+  suspense: 41,
+  'boys love': 28,
+  'girls love': 26,
+  shoujo: 25,
+  shounen: 27,
+  seinen: 42,
+  josei: 43,
+  kids: 15
+};
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestJikan(path: string): Promise<any> {
+  const job = requestQueue.then(async () => {
+    const url = JIKAN_BASE_URL + path;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const waitMs = Math.max(0, nextRequestAt - Date.now());
+      if (waitMs > 0) await delay(waitMs);
+      nextRequestAt = Date.now() + 400;
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if ((response.status === 429 || response.status === 503) && attempt < 2) {
+        await delay(1200 * (attempt + 1));
+        continue;
+      }
+      if (!response.ok) {
+        throw new Error('Jikan request failed with HTTP ' + response.status);
+      }
+      return response.json();
     }
-  }
-  return `${title} (हिन्दी डब)`;
+    throw new Error('Jikan is rate-limiting requests. Please try again shortly.');
+  });
+  requestQueue = job.then(() => undefined, () => undefined);
+  return job;
 }
 
-export function getVoiceActorsForAnime(title: string) {
-  const lower = title.toLowerCase();
-  if (lower.includes('naruto')) {
-    return [
-      { character: 'Naruto Uzumaki', actor: 'Rajesh Kava', role: 'Protagonist' },
-      { character: 'Sasuke Uchiha', actor: 'Sanket Mhatre', role: 'Rival' },
-      { character: 'Kakashi Hatake', actor: 'Pawan Kalra', role: 'Mentor' },
-    ];
-  }
-  if (lower.includes('dragon ball') || lower.includes('goku')) {
-    return [
-      { character: 'Goku', actor: 'Ankur Javeri', role: 'Saiyan' },
-      { character: 'Vegeta', actor: 'Prasad Barve', role: 'Prince of Saiyans' },
-      { character: 'Piccolo', actor: 'Mayur Vyas', role: 'Namekian' },
-    ];
-  }
-  if (lower.includes('demon slayer') || lower.includes('kimetsu')) {
-    return [
-      { character: 'Tanjiro Kamado', actor: 'Priyansh Jora', role: 'Demon Slayer' },
-      { character: 'Nezuko Kamado', actor: 'Urvi Ashar', role: 'Sister' },
-      { character: 'Zenitsu', actor: 'Rohan Jadhav', role: 'Thunder Slayer' },
-    ];
-  }
-  if (lower.includes('jujutsu') || lower.includes('gojo')) {
-    return [
-      { character: 'Satoru Gojo', actor: 'Lohit Sharma', role: 'Sorcerer' },
-      { character: 'Yuji Itadori', actor: 'Pratik Sinha', role: 'Vessel' },
-      { character: 'Sukuna', actor: 'Sanket Mhatre', role: 'Curse King' },
-    ];
-  }
-  return [
-    { character: 'Main Protagonist', actor: 'Sanket Mhatre', role: 'Lead Voice' },
-    { character: 'Lead Companion', actor: 'Rajesh Kava', role: 'Deuteragonist' },
-    { character: 'Main Heroine', actor: 'Pooja Punjabi', role: 'Lead Female Voice' },
-    { character: 'Rival / Master', actor: 'Mayur Vyas', role: 'Supporting Voice' },
-  ];
+function cacheGet<T>(key: string): T | undefined {
+  const entry = cache.get(key) as { value: T; timestamp: number } | undefined;
+  if (!entry || Date.now() - entry.timestamp > CACHE_TTL_MS) return undefined;
+  return entry.value;
 }
 
-// Every anime in the AniHindi catalog has full Hindi Dub support
-export function isAnimeHindiDubbed(_title: string): boolean {
-  return true;
+function cacheSet<T>(key: string, value: T): void {
+  cache.set(key, { value, timestamp: Date.now() });
 }
 
-// Convert Jikan API item into our unified Anime model
+export function getHindiTitle(title: string): string | undefined {
+  return HINDI_TITLES[title.trim().toLocaleLowerCase()];
+}
+
+function safeAnimeType(value: unknown): Anime['type'] {
+  if (value === 'TV' || value === 'Movie' || value === 'OVA') return value;
+  return 'Special';
+}
+
+function safeAnimeStatus(value: unknown): Anime['status'] {
+  if (value === 'Currently Airing') return 'Currently Airing';
+  if (value === 'Not yet aired') return 'Not yet aired';
+  return 'Finished Airing';
+}
+
+/** Convert public MyAnimeList metadata into the app model. Audio rights are never inferred. */
 export function transformJikanAnime(item: any): Anime {
-  const animeTitle = item.title_english || item.title || 'Anime Stream';
-  const trailerId = item.trailer?.youtube_id || 'QczGoCmX-pI';
-  const embedUrl = `https://www.youtube-nocookie.com/embed/${trailerId}?autoplay=1&enablejsapi=1&rel=0`;
-  const titleHindi = getHindiTitle(animeTitle);
+  const title = String(item?.title || item?.title_english || 'Untitled anime');
+  const titleEnglish = item?.title_english || item?.title || undefined;
+  const trailerId = item?.trailer?.youtube_id || undefined;
+  const trailerUrl = item?.trailer?.embed_url ||
+    (trailerId ? 'https://www.youtube-nocookie.com/embed/' + trailerId + '?rel=0' : undefined);
+  const year = item?.year || item?.aired?.prop?.from?.year ||
+    (item?.aired?.from ? new Date(item.aired.from).getFullYear() : undefined);
 
   return {
-    id: item.mal_id,
-    mal_id: item.mal_id,
-    title: item.title,
-    titleEnglish: item.title_english || item.title,
-    titleJapanese: item.title_japanese,
-    titleHindi: titleHindi,
-    image: item.images?.webp?.large_image_url || item.images?.jpg?.large_image_url || item.images?.jpg?.image_url,
-    synopsis: item.synopsis || 'No synopsis available for this title.',
-    synopsisHindi: `${animeTitle} अब सम्पूर्ण हिन्दी डब (Dual Audio 1080p) में उपलब्ध है। सभी एपिसोड्स हिन्दी आवाज़ और सबटाइटल में बिना किसी रुकावट के देखें।`,
-    score: item.score || 7.8,
-    scoredBy: item.scored_by || 10000,
-    rank: item.rank,
-    popularity: item.popularity,
-    type: item.type || 'TV',
-    episodes: item.episodes || 12,
-    status: item.status || 'Finished Airing',
-    duration: item.duration || '24 min per ep',
-    rating: item.rating || 'PG-13',
-    year: item.year || (item.aired?.from ? new Date(item.aired.from).getFullYear() : 2023),
-    season: item.season,
-    genres: (item.genres || []).map((g: any) => g.name),
-    studios: (item.studios || []).map((s: any) => s.name),
+    id: Number(item?.mal_id) || 0,
+    mal_id: Number(item?.mal_id) || 0,
+    title,
+    titleEnglish,
+    titleJapanese: item?.title_japanese || undefined,
+    titleHindi: getHindiTitle(titleEnglish || title),
+    image: item?.images?.webp?.large_image_url ||
+      item?.images?.jpg?.large_image_url ||
+      item?.images?.jpg?.image_url || '',
+    synopsis: item?.synopsis || 'No synopsis available.',
+    score: Number(item?.score) || 0,
+    scoredBy: Number(item?.scored_by) || undefined,
+    rank: Number(item?.rank) || undefined,
+    popularity: Number(item?.popularity) || undefined,
+    type: safeAnimeType(item?.type),
+    episodes: Number.isFinite(item?.episodes) ? item.episodes : null,
+    status: safeAnimeStatus(item?.status),
+    duration: item?.duration || 'Unknown',
+    rating: item?.rating || 'Not rated',
+    year,
+    season: item?.season || undefined,
+    genres: Array.isArray(item?.genres) ? item.genres.map((genre: any) => genre.name).filter(Boolean) : [],
+    studios: Array.isArray(item?.studios) ? item.studios.map((studio: any) => studio.name).filter(Boolean) : [],
     trailerYoutubeId: trailerId,
-    trailerEmbedUrl: embedUrl,
+    trailerEmbedUrl: trailerUrl,
     hindiDub: {
-      isAvailable: true,
-      studio: 'Crunchyroll Hindi Dubbing Studio / Muse India / Sony YAY!',
-      seasonsDubbed: 'Complete Hindi Dubbed (Dual Audio HD)',
-      qualityRating: 4.9,
-      voiceActors: getVoiceActorsForAnime(animeTitle),
+      isAvailable: false,
+      verificationStatus: 'unverified'
     },
-    streams: createAnimeStreams(item.mal_id, 1, true, animeTitle, 'Hindi'),
+    streams: []
   };
+}
+
+export interface AnimeSearchResult {
+  animes: Anime[];
+  hasNextPage: boolean;
+  total: number;
+  source: 'jikan' | 'curated-fallback';
+}
+
+export interface JikanEpisode {
+  mal_id: number;
+  number: number;
+  title: string;
+  titleJapanese?: string;
+  titleRomanji?: string;
+  aired?: string;
+  score?: number;
+  filler?: boolean;
+  recap?: boolean;
+  url?: string;
+}
+
+function curatedFallback(query: string, genre?: string): Anime[] {
+  let list = CURATED_ANIME;
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (normalizedQuery) {
+    list = list.filter((anime) =>
+      [anime.title, anime.titleEnglish, anime.titleJapanese, anime.titleHindi]
+        .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))
+    );
+  }
+  if (genre && genre !== 'All Genres') {
+    list = list.filter((anime) =>
+      anime.genres.some((item) => item.toLocaleLowerCase() === genre.toLocaleLowerCase())
+    );
+  }
+  return list;
 }
 
 export async function searchAnimeFromApi(
@@ -153,77 +192,109 @@ export async function searchAnimeFromApi(
   genre?: string,
   page = 1,
   limit = 24
-): Promise<{ animes: Anime[]; hasNextPage: boolean; total: number }> {
-  const cacheKey = `search_${query}_${genre || 'all'}_${page}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return { animes: cached.data, hasNextPage: true, total: 10000 };
-  }
+): Promise<AnimeSearchResult> {
+  const normalizedGenre = (genre || '').trim().toLocaleLowerCase();
+  const cacheKey = 'search:' + query.trim().toLocaleLowerCase() + ':' + normalizedGenre + ':' + page + ':' + limit;
+  const cached = cacheGet<AnimeSearchResult>(cacheKey);
+  if (cached) return cached;
 
   try {
     const params = new URLSearchParams();
-    if (query.trim()) params.append('q', query.trim());
-    params.append('page', page.toString());
-    params.append('limit', limit.toString());
-    params.append('sfw', 'true');
-    params.append('order_by', 'popularity');
-    params.append('sort', 'asc');
-
-    const res = await fetch(`${JIKAN_BASE_URL}/anime?${params.toString()}`);
-    if (!res.ok) {
-      throw new Error(`Jikan API status: ${res.status}`);
+    const cleanQuery = query.trim();
+    if (cleanQuery) params.set('q', cleanQuery);
+    params.set('page', String(page));
+    params.set('limit', String(Math.min(Math.max(limit, 1), 25)));
+    params.set('sfw', 'true');
+    if (normalizedGenre && normalizedGenre !== 'all genres' && GENRE_IDS[normalizedGenre]) {
+      params.set('genres', String(GENRE_IDS[normalizedGenre]));
     }
+    params.set('order_by', cleanQuery ? 'popularity' : 'score');
+    params.set('sort', 'desc');
 
-    const json = await res.json();
-    const data = (json.data || []).map(transformJikanAnime);
-
-    // Filter by genre if specified
-    const filtered = genre && genre !== 'All Genres'
-      ? data.filter((a: Anime) => a.genres.some((g) => g.toLowerCase() === genre.toLowerCase()))
-      : data;
-
-    cache.set(cacheKey, { data: filtered, timestamp: Date.now() });
-    return {
-      animes: filtered,
-      hasNextPage: json.pagination?.has_next_page || false,
-      total: json.pagination?.items?.total || 10000,
+    const json = await requestJikan('/anime?' + params.toString());
+    const rawItems = Array.isArray(json?.data) ? json.data : [];
+    const mapped = rawItems
+      .filter((item: any) => {
+        const rating = String(item?.rating || '');
+        return !rating.startsWith('R+') && rating !== 'Rx - Hentai';
+      })
+      .map(transformJikanAnime);
+    const hasKnownGenreId = Boolean(GENRE_IDS[normalizedGenre]);
+    const results = !normalizedGenre || normalizedGenre === 'all genres' || hasKnownGenreId
+      ? mapped
+      : mapped.filter((anime: Anime) => anime.genres.some((value) => value.toLocaleLowerCase() === normalizedGenre));
+    const result: AnimeSearchResult = {
+      animes: results,
+      hasNextPage: Boolean(json?.pagination?.has_next_page),
+      total: Number(json?.pagination?.items?.total) || results.length,
+      source: 'jikan'
     };
+    cacheSet(cacheKey, result);
+    return result;
   } catch (error) {
-    console.warn('Jikan API rate limit or network issue, using curated anime search:', error);
-    // Instant fallback to curated catalog matching
-    let results = CURATED_ANIME;
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      results = results.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          (a.titleEnglish && a.titleEnglish.toLowerCase().includes(q)) ||
-          (a.titleHindi && a.titleHindi.toLowerCase().includes(q))
-      );
-    }
-    if (genre && genre !== 'All Genres') {
-      results = results.filter((a) => a.genres.some((g) => g.toLowerCase() === genre.toLowerCase()));
-    }
-    return { animes: results, hasNextPage: false, total: results.length };
+    console.warn('Jikan catalogue unavailable; using the bundled sample list.', error);
+    const fallback = curatedFallback(query, genre);
+    return {
+      animes: fallback.slice(0, limit),
+      hasNextPage: false,
+      total: fallback.length,
+      source: 'curated-fallback'
+    };
   }
 }
 
-export async function getTopAnimeList(page = 1, filterType?: string): Promise<Anime[]> {
-  const cacheKey = `top_${filterType || 'bypopularity'}_${page}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.data;
-  }
-
+export async function getTopAnimeList(page = 1, filterType = 'bypopularity'): Promise<Anime[]> {
+  const key = 'top:' + filterType + ':' + page;
+  const cached = cacheGet<Anime[]>(key);
+  if (cached) return cached;
   try {
-    const res = await fetch(`${JIKAN_BASE_URL}/top/anime?filter=${filterType || 'bypopularity'}&page=${page}&limit=24&sfw=true`);
-    if (!res.ok) throw new Error('Failed to fetch top anime');
-    const json = await res.json();
-    const data = (json.data || []).map(transformJikanAnime);
-    cache.set(cacheKey, { data, timestamp: Date.now() });
-    return data;
-  } catch (err) {
-    console.warn('Using curated fallback for top anime:', err);
-    return CURATED_ANIME;
+    const params = new URLSearchParams({
+      filter: filterType,
+      page: String(page),
+      limit: '24',
+      sfw: 'true'
+    });
+    const json = await requestJikan('/top/anime?' + params.toString());
+    const list = (Array.isArray(json?.data) ? json.data : [])
+      .filter((item: any) => {
+        const rating = String(item?.rating || '');
+        return !rating.startsWith('R+') && rating !== 'Rx - Hentai';
+      })
+      .map(transformJikanAnime);
+    cacheSet(key, list);
+    return list;
+  } catch (error) {
+    console.warn('Could not load popular anime from Jikan.', error);
+    return CURATED_ANIME.slice(0, 24);
   }
+}
+
+export interface JikanEpisodePage {
+  episodes: JikanEpisode[];
+  hasNextPage: boolean;
+}
+
+export async function getAnimeEpisodes(malId: number, page = 1): Promise<JikanEpisodePage> {
+  const key = 'episodes:' + malId + ':' + page;
+  const cached = cacheGet<JikanEpisodePage>(key);
+  if (cached) return cached;
+  const json = await requestJikan('/anime/' + encodeURIComponent(String(malId)) + '/episodes?page=' + page);
+  const episodes = (Array.isArray(json?.data) ? json.data : []).map((item: any, index: number) => ({
+    mal_id: Number(item?.mal_id) || index + 1,
+    number: Number(item?.episode) || ((page - 1) * 100 + index + 1),
+    title: item?.title || 'Episode ' + ((page - 1) * 100 + index + 1),
+    titleJapanese: item?.title_japanese || undefined,
+    titleRomanji: item?.title_romanji || undefined,
+    aired: item?.aired || undefined,
+    score: Number(item?.score) || undefined,
+    filler: Boolean(item?.filler),
+    recap: Boolean(item?.recap),
+    url: item?.url || undefined
+  }));
+  const result = {
+    episodes,
+    hasNextPage: Boolean(json?.pagination?.has_next_page)
+  };
+  cacheSet(key, result);
+  return result;
 }

@@ -114,7 +114,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({
             My Watchlist ({watchlist.length})
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            All your bookmarked shows are saved locally on your device for instant offline access.
+            Your saved anime list is stored locally on this device. Video files are not downloaded.
           </p>
         </div>
 
@@ -136,7 +136,7 @@ export const WatchlistView: React.FC<WatchlistViewProps> = ({
             <Bookmark className="w-10 h-10 text-slate-600 mx-auto mb-3" />
             <h3 className="text-base font-bold text-white mb-1">Your Watchlist is Empty</h3>
             <p className="text-xs text-slate-400 mb-4">
-              Browse through our 10,000+ anime titles or Hindi Dub vault and bookmark your favorite series.
+              Browse the anime catalogue or Hindi Dub vault and bookmark your favorite series.
             </p>
           </div>
         )}

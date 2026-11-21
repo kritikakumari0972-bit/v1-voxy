@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, Bookmark, Info, Sparkles, Volume2, Film } from 'lucide-react';
 import { Anime } from '../types/anime';
+import { isHindiDubVerified } from '../services/animeTrust';
 import { HERO_BANNER } from '../data/curatedAnime';
 
 interface HeroSectionProps {
@@ -39,11 +40,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Unboxed Editorial Kicker (NO static pills) */}
         <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-amber-400 mb-3 tracking-wide">
           <Volume2 className="w-4 h-4 text-rose-500" />
-          <span className="font-semibold text-white">Featured Hindi Dubbed Premiere</span>
+          <span className="font-semibold text-white">Featured Anime</span>
           <span aria-hidden="true" className="text-slate-500">·</span>
-          <span>हिंदी डब उपलब्ध</span>
+          <span>{isHindiDubVerified(featuredAnime) ? 'Verified Hindi audio' : 'Audio availability unverified'}</span>
           <span aria-hidden="true" className="text-slate-500">·</span>
-          <span>1080p Ultra HD</span>
+          <span>Anime overview</span>
         </div>
 
         {/* Hero Title */}
@@ -68,7 +69,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <span aria-hidden="true" className="text-slate-600">·</span>
           <span>{featuredAnime.year}</span>
           <span aria-hidden="true" className="text-slate-600">·</span>
-          <span className="text-emerald-400 font-medium">Free Streaming</span>
+          <span className="text-emerald-400 font-medium">Catalogue metadata</span>
           <span aria-hidden="true" className="text-slate-600">·</span>
           <span>{featuredAnime.genres.slice(0, 3).join(', ')}</span>
         </div>
@@ -85,7 +86,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             className="flex items-center gap-2.5 px-6 py-3 text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 active:scale-95 rounded-lg transition-all shadow-xl shadow-rose-600/30 whitespace-nowrap cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>Watch Episode 1 (Hindi Dub)</span>
+            <span>View title options</span>
           </button>
 
           <button
@@ -112,20 +113,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Bottom Feature Proof Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-12 pt-6 border-t border-slate-800/60 text-xs text-slate-400">
           <div>
-            <div className="font-semibold text-white text-sm tabular-nums">10,000+ Anime</div>
-            <div className="text-slate-500 mt-0.5">Comprehensive real catalog</div>
+            <div className="font-semibold text-white text-sm tabular-nums">Anime metadata</div>
+            <div className="text-slate-500 mt-0.5">Live catalogue search</div>
           </div>
           <div>
-            <div className="font-semibold text-white text-sm">Hindi + Multi-Audio</div>
-            <div className="text-slate-500 mt-0.5">Original dubs & subtitles</div>
+            <div className="font-semibold text-white text-sm">Anime overview</div>
+            <div className="text-slate-500 mt-0.5">Trailer and metadata</div>
           </div>
           <div>
             <div className="font-semibold text-white text-sm">1080p Ultra HD</div>
-            <div className="text-slate-500 mt-0.5">Fast multi-server CDN</div>
+            <div className="text-slate-500 mt-0.5">Only approved sources</div>
           </div>
           <div>
-            <div className="font-semibold text-white text-sm">100% Free Forever</div>
-            <div className="text-slate-500 mt-0.5">No login or signup required</div>
+            <div className="font-semibold text-white text-sm">Rights-reviewed</div>
+            <div className="text-slate-500 mt-0.5">No account needed to browse</div>
           </div>
         </div>
 

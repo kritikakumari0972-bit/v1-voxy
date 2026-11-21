@@ -1,184 +1,24 @@
 import { Anime, Episode, StreamSource } from '../types/anime';
+import heroBanner from '../assets/images/hero_anime_showcase_1793197634668.jpg';
+import hindiDubBanner from '../assets/images/hindi_dub_spotlight_1793197636490.jpg';
+import collectionBanner from '../assets/images/anime_collection_banner_1793197635836.jpg';
 
-export const HERO_BANNER = '/src/assets/images/hero_anime_showcase_1793197634668.jpg';
-export const HINDI_DUB_BANNER = '/src/assets/images/hindi_dub_spotlight_1793197636490.jpg';
-export const COLLECTION_BANNER = '/src/assets/images/anime_collection_banner_1793197635836.jpg';
+export const HERO_BANNER = heroBanner;
+export const HINDI_DUB_BANNER = hindiDubBanner;
+export const COLLECTION_BANNER = collectionBanner;
 
-// Helper to get real authentic Hindi audio streams for any anime and episode
-export function getRealHindiStream(
-  malId: number | string,
-  ep: number = 1,
-  animeTitle: string = ''
-): { primaryEmbed: string; dailymotionEmbed: string; tvBroadcastEmbed: string; searchEmbed: string } {
-  const id = typeof malId === 'number' ? malId : parseInt(malId as string, 10) || 52991;
-  const titleClean = animeTitle || 'Anime';
-  const query = encodeURIComponent(`${titleClean} Episode ${ep} Hindi Dub`);
-
-  return {
-    primaryEmbed: `https://www.animeembed.com/embed/mal/${id}/${ep}?track=dub&autoPlay=1`,
-    dailymotionEmbed: `https://vidlink.pro/anime/${id}/${ep}/dub`,
-    tvBroadcastEmbed: `https://vidsrc.cc/v2/embed/anime/${id}/${ep}`,
-    searchEmbed: `https://embed.su/embed/anime/${id}/${ep}`,
-  };
-}
-
-// Helper to generate reliable streaming sources tailored to the active audio track
+/**
+ * No media URLs are generated from MAL IDs. An operator must add a source
+ * with explicit rights evidence and verified audio before it can be played.
+ */
 export function createAnimeStreams(
-  malId: number | string,
-  episodeNumber: number = 1,
-  isHindiAvailable: boolean = true,
-  animeTitle: string = 'Anime',
-  audioLang: string = 'Hindi'
+  _malId: number | string,
+  _episodeNumber = 1,
+  _isHindiAvailable = false,
+  _animeTitle = 'Anime',
+  _audioLang = 'Japanese'
 ): StreamSource[] {
-  const cleanId = typeof malId === 'number' ? malId : parseInt(malId as string, 10) || 52991;
-  const ep = episodeNumber || 1;
-  const track = audioLang === 'Japanese' ? 'sub' : 'dub';
-  const hindiStreams = getRealHindiStream(cleanId, ep, animeTitle);
-
-  if (audioLang === 'Hindi') {
-    return [
-      {
-        serverName: 'Server 1: AnimeEmbed HD (Real Anime Episode - Dual Audio / Hindi Dub)',
-        serverType: 'embed',
-        url: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=dub&autoPlay=1`,
-        embedUrl: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=dub&autoPlay=1`,
-        quality: '1080p Ultra HD',
-        hasHindiAudio: true,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 2: VidLink Ultra Stream (Fast Multi-CDN)',
-        serverType: 'embed',
-        url: `https://vidlink.pro/anime/${cleanId}/${ep}/dub`,
-        embedUrl: `https://vidlink.pro/anime/${cleanId}/${ep}/dub`,
-        quality: '1080p Multi-CDN',
-        hasHindiAudio: true,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 3: VidSrc Anime v2 (Multi-Host HD)',
-        serverType: 'embed',
-        url: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-        embedUrl: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-        quality: '1080p Multi-Host',
-        hasHindiAudio: true,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 4: EmbedSU Global Mirror',
-        serverType: 'embed',
-        url: `https://embed.su/embed/anime/${cleanId}/${ep}`,
-        embedUrl: `https://embed.su/embed/anime/${cleanId}/${ep}`,
-        quality: '1080p Global CDN',
-        hasHindiAudio: true,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 5: AutoEmbed Anime Cloud',
-        serverType: 'embed',
-        url: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-        embedUrl: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-        quality: '1080p Cloud HD',
-        hasHindiAudio: true,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-    ];
-  }
-
-  // English Dubbed Servers
-  if (audioLang === 'English') {
-    return [
-      {
-        serverName: 'Server 1: VidLink Stream (English Dub HD)',
-        serverType: 'embed',
-        url: `https://vidlink.pro/anime/${cleanId}/${ep}/dub`,
-        embedUrl: `https://vidlink.pro/anime/${cleanId}/${ep}/dub`,
-        quality: '1080p Ultra HD',
-        hasHindiAudio: false,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 2: AnimeEmbed Cloud (English Dub)',
-        serverType: 'embed',
-        url: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=dub&autoPlay=1`,
-        embedUrl: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=dub&autoPlay=1`,
-        quality: '1080p Cloud HD',
-        hasHindiAudio: false,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 3: AutoEmbed Anime (Fast CDN)',
-        serverType: 'embed',
-        url: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-        embedUrl: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-        quality: '1080p Fast CDN',
-        hasHindiAudio: false,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-      {
-        serverName: 'Server 4: VidSrc Anime v2',
-        serverType: 'embed',
-        url: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-        embedUrl: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-        quality: 'Multi-Res 1080p',
-        hasHindiAudio: false,
-        hasEnglishAudio: true,
-        hasJapaneseAudio: false,
-      },
-    ];
-  }
-
-  // Japanese Audio (Subbed) Servers
-  return [
-    {
-      serverName: 'Server 1: VidLink Stream (Original Japanese + English Sub 1080p)',
-      serverType: 'embed',
-      url: `https://vidlink.pro/anime/${cleanId}/${ep}/sub`,
-      embedUrl: `https://vidlink.pro/anime/${cleanId}/${ep}/sub`,
-      quality: '1080p Ultra HD',
-      hasHindiAudio: false,
-      hasEnglishAudio: false,
-      hasJapaneseAudio: true,
-    },
-    {
-      serverName: 'Server 2: AnimeEmbed Cloud (Japanese Audio)',
-      serverType: 'embed',
-      url: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=sub&autoPlay=1`,
-      embedUrl: `https://www.animeembed.com/embed/mal/${cleanId}/${ep}?track=sub&autoPlay=1`,
-      quality: '1080p Cloud HD',
-      hasHindiAudio: false,
-      hasEnglishAudio: false,
-      hasJapaneseAudio: true,
-    },
-    {
-      serverName: 'Server 3: AutoEmbed Anime (Fast CDN)',
-      serverType: 'embed',
-      url: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-      embedUrl: `https://player.autoembed.cc/embed/anime/${cleanId}/${ep}`,
-      quality: '1080p Fast CDN',
-      hasHindiAudio: false,
-      hasEnglishAudio: false,
-      hasJapaneseAudio: true,
-    },
-    {
-      serverName: 'Server 4: VidSrc Anime v2 (Japanese)',
-      serverType: 'embed',
-      url: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-      embedUrl: `https://vidsrc.cc/v2/embed/anime/${cleanId}/${ep}`,
-      quality: 'Multi-Host HD',
-      hasHindiAudio: false,
-      hasEnglishAudio: false,
-      hasJapaneseAudio: true,
-    },
-  ];
+  return [];
 }
 
 export const CURATED_ANIME: Anime[] = [
@@ -927,7 +767,12 @@ export const CURATED_ANIME: Anime[] = [
   },
 ];
 
-// Helper to generate realistic episode lists for any anime
+// Curated rows are editorial metadata only; no dubbing or stream claims are verified by default.
+for (const anime of CURATED_ANIME) {
+  anime.hindiDub = { isAvailable: false, verificationStatus: 'unverified' };
+  anime.streams = [];
+}
+
 export function generateEpisodesForAnime(anime: Anime, count = 12): Episode[] {
   const actualCount = anime.episodes && anime.episodes > 0 ? Math.min(anime.episodes, count) : count;
   const episodes: Episode[] = [];
