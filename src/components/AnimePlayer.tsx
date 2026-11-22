@@ -192,6 +192,25 @@ export const AnimePlayer: React.FC<AnimePlayerProps> = ({
             </div>
           )}
 
+          {anime.officialEpisodes && anime.officialEpisodes.length > 0 && (
+            <section className="rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.035] p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div><div className="text-[9px] font-bold uppercase tracking-[0.22em] text-emerald-200">AniList external episode links</div><h3 className="mt-1 text-sm font-bold text-white">Episodes listed by streaming providers</h3></div>
+                <ShieldCheck className="h-4 w-4 text-emerald-300" />
+              </div>
+              <p className="mb-4 text-[11px] leading-5 text-slate-400">AniList lists these external episode destinations as legal streaming links. They open on the provider's own website; region restrictions and sign-in may apply.</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {anime.officialEpisodes.slice(0, 12).map((episode, index) => (
+                  <a key={episode.url + index} href={episode.url} target="_blank" rel="noopener noreferrer"
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-black/15 px-3.5 py-3 text-[11px] font-semibold text-slate-200 transition hover:border-emerald-300/30 hover:bg-emerald-300/[0.06]">
+                    <span className="min-w-0 truncate">{episode.title || 'Watch episode ' + (index + 1)} <span className="ml-1 text-[9px] font-normal text-slate-500">{episode.site ? '· ' + episode.site : ''}</span></span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 sm:p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div><div className="text-[9px] font-bold uppercase tracking-[0.22em] text-violet-300">Watch on official services</div><h3 className="mt-1 text-sm font-bold text-white">Check availability for this title</h3></div>
