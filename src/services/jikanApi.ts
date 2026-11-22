@@ -1,160 +1,45 @@
 import { Anime } from '../types/anime';
-import { CURATED_ANIME } from '../data/curatedAnime';
 
-const JIKAN_BASE_URL = 'https://api.jikan.moe/v4';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const cache = new Map<string, { value: unknown; timestamp: number }>();
-let requestQueue: Promise<unknown> = Promise.resolve();
-let nextRequestAt = 0;
+const ANILIST_URL = 'https://graphql.anilist.co';
+const JIKAN_URL = 'https://api.jikan.moe/v4';
+const CACHE_TTL = 12 * 60 * 60 * 1000;
+const cache = new Map<string, { value: unknown; savedAt: number }>();
+let anilistQueue: Promise<unknown> = Promise.resolve();
+let anilistNextAt = 0;
+let jikanQueue: Promise<unknown> = Promise.resolve();
+let jikanNextAt = 0;
 
-const HINDI_TITLES: Record<string, string> = {
-  'solo leveling': 'सोलो लेवलिंग',
-  'naruto': 'नारुतो',
-  'naruto shippuden': 'नारुतो: शिपुडेन',
-  'dragon ball z': 'ड्रैगन बॉल ज़ेड',
-  'dragon ball super': 'ड्रैगन बॉल सुपर',
-  'demon slayer: kimetsu no yaiba': 'डिमॉन स्लेयर: किमेत्सु नो याइबा',
-  'jujutsu kaisen': 'जुजुत्सु काइसेन',
-  'death note': 'डेथ नोट',
-  'one piece': 'वन पीस',
-  'one punch man': 'वन पंच मैन',
-  'attack on titan': 'अटैक ऑन टाइटन',
-  'bleach': 'ब्लीच',
-  'spy x family': 'स्पाई एक्स फैमिली',
-  'chainsaw man': 'चेनसॉ मैन',
-  'haikyu!!': 'हाइक्यू!!',
-  'blue lock': 'ब्लू लॉक',
-  'doraemon': 'डोरेमोन',
-  'crayon shin-chan': 'क्रेयॉन शिन-चैन'
-};
-
-const GENRE_IDS: Record<string, number> = {
-  action: 1,
-  adventure: 2,
-  avantgarde: 5,
-  'award winning': 46,
-  comedy: 4,
-  drama: 8,
-  fantasy: 10,
-  gourmet: 47,
-  horror: 14,
-  mystery: 7,
-  romance: 22,
-  'sci-fi': 24,
-  'slice of life': 36,
-  sports: 30,
-  supernatural: 37,
-  suspense: 41,
-  'boys love': 28,
-  'girls love': 26,
-  shoujo: 25,
-  shounen: 27,
-  seinen: 42,
-  josei: 43,
-  kids: 15
-};
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function requestJikan(path: string): Promise<any> {
-  const job = requestQueue.then(async () => {
-    const url = JIKAN_BASE_URL + path;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const waitMs = Math.max(0, nextRequestAt - Date.now());
-      if (waitMs > 0) await delay(waitMs);
-      nextRequestAt = Date.now() + 400;
-      const response = await fetch(url, { headers: { Accept: 'application/json' } });
-      if ((response.status === 429 || response.status === 503) && attempt < 2) {
-        await delay(1200 * (attempt + 1));
-        continue;
-      }
-      if (!response.ok) {
-        throw new Error('Jikan request failed with HTTP ' + response.status);
-      }
-      return response.json();
+const ANIME_QUERY = `
+query VoxyAnimeCatalogue($page: Int, $perPage: Int, $search: String, $genre: String, $sort: [MediaSort]) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total currentPage lastPage hasNextPage }
+    media(type: ANIME, search: $search, genre: $genre, isAdult: false, sort: $sort) {
+      id
+      idMal
+      title { romaji english native }
+      coverImage { large extraLarge }
+      bannerImage
+      description(asHtml: false)
+      averageScore
+      popularity
+      episodes
+      format
+      status
+      startDate { year }
+      duration
+      genres
+      studios(isMain: true) { nodes { name isAnimationStudio } }
+      trailer { id site }
     }
-    throw new Error('Jikan is rate-limiting requests. Please try again shortly.');
-  });
-  requestQueue = job.then(() => undefined, () => undefined);
-  return job;
-}
-
-function cacheGet<T>(key: string): T | undefined {
-  const entry = cache.get(key) as { value: T; timestamp: number } | undefined;
-  if (!entry || Date.now() - entry.timestamp > CACHE_TTL_MS) return undefined;
-  return entry.value;
-}
-
-function cacheSet<T>(key: string, value: T): void {
-  cache.set(key, { value, timestamp: Date.now() });
-}
-
-export function getHindiTitle(title: string): string | undefined {
-  return HINDI_TITLES[title.trim().toLocaleLowerCase()];
-}
-
-function safeAnimeType(value: unknown): Anime['type'] {
-  if (value === 'TV' || value === 'Movie' || value === 'OVA') return value;
-  return 'Special';
-}
-
-function safeAnimeStatus(value: unknown): Anime['status'] {
-  if (value === 'Currently Airing') return 'Currently Airing';
-  if (value === 'Not yet aired') return 'Not yet aired';
-  return 'Finished Airing';
-}
-
-/** Convert public MyAnimeList metadata into the app model. Audio rights are never inferred. */
-export function transformJikanAnime(item: any): Anime {
-  const title = String(item?.title || item?.title_english || 'Untitled anime');
-  const titleEnglish = item?.title_english || item?.title || undefined;
-  const trailerId = item?.trailer?.youtube_id || undefined;
-  const trailerUrl = item?.trailer?.embed_url ||
-    (trailerId ? 'https://www.youtube-nocookie.com/embed/' + trailerId + '?rel=0' : undefined);
-  const year = item?.year || item?.aired?.prop?.from?.year ||
-    (item?.aired?.from ? new Date(item.aired.from).getFullYear() : undefined);
-
-  return {
-    id: Number(item?.mal_id) || 0,
-    mal_id: Number(item?.mal_id) || 0,
-    title,
-    titleEnglish,
-    titleJapanese: item?.title_japanese || undefined,
-    titleHindi: getHindiTitle(titleEnglish || title),
-    image: item?.images?.webp?.large_image_url ||
-      item?.images?.jpg?.large_image_url ||
-      item?.images?.jpg?.image_url || '',
-    synopsis: item?.synopsis || 'No synopsis available.',
-    score: Number(item?.score) || 0,
-    scoredBy: Number(item?.scored_by) || undefined,
-    rank: Number(item?.rank) || undefined,
-    popularity: Number(item?.popularity) || undefined,
-    type: safeAnimeType(item?.type),
-    episodes: Number.isFinite(item?.episodes) ? item.episodes : null,
-    status: safeAnimeStatus(item?.status),
-    duration: item?.duration || 'Unknown',
-    rating: item?.rating || 'Not rated',
-    year,
-    season: item?.season || undefined,
-    genres: Array.isArray(item?.genres) ? item.genres.map((genre: any) => genre.name).filter(Boolean) : [],
-    studios: Array.isArray(item?.studios) ? item.studios.map((studio: any) => studio.name).filter(Boolean) : [],
-    trailerYoutubeId: trailerId,
-    trailerEmbedUrl: trailerUrl,
-    hindiDub: {
-      isAvailable: false,
-      verificationStatus: 'unverified'
-    },
-    streams: []
-  };
-}
+  }
+}`;
 
 export interface AnimeSearchResult {
   animes: Anime[];
   hasNextPage: boolean;
   total: number;
-  source: 'jikan' | 'curated-fallback';
+  source: 'anilist' | 'unavailable';
+  error?: string;
 }
 
 export interface JikanEpisode {
@@ -170,117 +55,190 @@ export interface JikanEpisode {
   url?: string;
 }
 
-function curatedFallback(query: string, genre?: string): Anime[] {
-  let list = CURATED_ANIME;
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  if (normalizedQuery) {
-    list = list.filter((anime) =>
-      [anime.title, anime.titleEnglish, anime.titleJapanese, anime.titleHindi]
-        .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))
-    );
-  }
-  if (genre && genre !== 'All Genres') {
-    list = list.filter((anime) =>
-      anime.genres.some((item) => item.toLocaleLowerCase() === genre.toLocaleLowerCase())
-    );
-  }
-  return list;
+export interface JikanEpisodePage {
+  episodes: JikanEpisode[];
+  hasNextPage: boolean;
+}
+
+type CatalogueSort = 'POPULARITY_DESC' | 'TRENDING_DESC' | 'SCORE_DESC' | 'START_DATE_DESC';
+
+function getCached<T>(key: string): T | undefined {
+  const entry = cache.get(key) as { value: T; savedAt: number } | undefined;
+  return entry && Date.now() - entry.savedAt < CACHE_TTL ? entry.value : undefined;
+}
+
+function setCached<T>(key: string, value: T): void {
+  cache.set(key, { value, savedAt: Date.now() });
+}
+
+function cleanDescription(value: unknown): string {
+  return String(value || 'No synopsis is available from the catalogue.')
+    .replace(/<br\\s*\\/?\\s*>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+function mapFormat(value: unknown): Anime['type'] {
+  if (value === 'MOVIE') return 'Movie';
+  if (value === 'OVA') return 'OVA';
+  if (value === 'TV' || value === 'TV_SHORT') return 'TV';
+  return 'Special';
+}
+
+function mapStatus(value: unknown): Anime['status'] {
+  if (value === 'RELEASING') return 'Currently Airing';
+  if (value === 'NOT_YET_RELEASED') return 'Not yet aired';
+  return 'Finished Airing';
+}
+
+function mapAniListAnime(item: any): Anime {
+  const titleEnglish = item?.title?.english || undefined;
+  const titleRomaji = item?.title?.romaji || undefined;
+  const title = titleEnglish || titleRomaji || item?.title?.native || 'Untitled anime';
+  const trailerId = item?.trailer?.site?.toLowerCase() === 'youtube' ? item.trailer.id : undefined;
+  const studioNodes = Array.isArray(item?.studios?.nodes) ? item.studios.nodes : [];
+
+  return {
+    id: Number(item?.id) || 0,
+    mal_id: Number(item?.idMal) || 0,
+    title,
+    titleEnglish,
+    titleJapanese: item?.title?.native || undefined,
+    image: item?.coverImage?.extraLarge || item?.coverImage?.large || '',
+    bannerImage: item?.bannerImage || undefined,
+    synopsis: cleanDescription(item?.description),
+    score: Number(item?.averageScore) ? Number(item.averageScore) / 10 : 0,
+    popularity: Number(item?.popularity) || undefined,
+    type: mapFormat(item?.format),
+    episodes: Number.isFinite(item?.episodes) ? Number(item.episodes) : null,
+    status: mapStatus(item?.status),
+    duration: Number(item?.duration) ? String(item.duration) + ' min per episode' : 'Unknown',
+    rating: item?.isAdult ? 'Adult' : 'Not rated by source',
+    year: Number(item?.startDate?.year) || undefined,
+    genres: Array.isArray(item?.genres) ? item.genres.filter((genre: unknown): genre is string => typeof genre === 'string') : [],
+    studios: studioNodes.filter((studio: any) => studio?.isAnimationStudio !== false).map((studio: any) => String(studio?.name || '')).filter(Boolean),
+    trailerYoutubeId: trailerId,
+    trailerEmbedUrl: trailerId ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(trailerId) : undefined,
+    hindiDub: { isAvailable: false, verificationStatus: 'unverified' },
+    streams: []
+  };
+}
+
+async function requestAniList(query: string, variables: Record<string, unknown>): Promise<any> {
+  const job = anilistQueue.then(async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const wait = Math.max(0, anilistNextAt - Date.now());
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      anilistNextAt = Date.now() + 1100;
+
+      const response = await fetch(ANILIST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ query, variables })
+      });
+      if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+        continue;
+      }
+      if (!response.ok) throw new Error('AniList returned HTTP ' + response.status + '. Please retry in a moment.');
+      const payload = await response.json();
+      if (Array.isArray(payload?.errors) && payload.errors.length) {
+        throw new Error(String(payload.errors[0]?.message || 'AniList could not complete this catalogue request.'));
+      }
+      return payload?.data;
+    }
+    throw new Error('AniList is temporarily rate-limiting requests. Please try again shortly.');
+  });
+  anilistQueue = job.then(() => undefined, () => undefined);
+  return job;
 }
 
 export async function searchAnimeFromApi(
   query: string,
   genre?: string,
   page = 1,
-  limit = 24
+  limit = 24,
+  sort: CatalogueSort = 'POPULARITY_DESC'
 ): Promise<AnimeSearchResult> {
-  const normalizedGenre = (genre || '').trim().toLocaleLowerCase();
-  const cacheKey = 'search:' + query.trim().toLocaleLowerCase() + ':' + normalizedGenre + ':' + page + ':' + limit;
-  const cached = cacheGet<AnimeSearchResult>(cacheKey);
+  const cleanQuery = query.trim();
+  const cleanGenre = genre && genre !== 'All Genres' ? genre : '';
+  const cacheKey = ['catalogue', cleanQuery.toLowerCase(), cleanGenre, page, limit, sort].join(':');
+  const cached = getCached<AnimeSearchResult>(cacheKey);
   if (cached) return cached;
 
   try {
-    const params = new URLSearchParams();
-    const cleanQuery = query.trim();
-    if (cleanQuery) params.set('q', cleanQuery);
-    params.set('page', String(page));
-    params.set('limit', String(Math.min(Math.max(limit, 1), 25)));
-    params.set('sfw', 'true');
-    if (normalizedGenre && normalizedGenre !== 'all genres' && GENRE_IDS[normalizedGenre]) {
-      params.set('genres', String(GENRE_IDS[normalizedGenre]));
-    }
-    params.set('order_by', cleanQuery ? 'popularity' : 'score');
-    params.set('sort', 'desc');
-
-    const json = await requestJikan('/anime?' + params.toString());
-    const rawItems = Array.isArray(json?.data) ? json.data : [];
-    const mapped = rawItems
-      .filter((item: any) => {
-        const rating = String(item?.rating || '');
-        return !rating.startsWith('R+') && rating !== 'Rx - Hentai';
-      })
-      .map(transformJikanAnime);
-    const hasKnownGenreId = Boolean(GENRE_IDS[normalizedGenre]);
-    const results = !normalizedGenre || normalizedGenre === 'all genres' || hasKnownGenreId
-      ? mapped
-      : mapped.filter((anime: Anime) => anime.genres.some((value) => value.toLocaleLowerCase() === normalizedGenre));
+    const data = await requestAniList(ANIME_QUERY, {
+      page: Math.max(1, page),
+      perPage: Math.min(50, Math.max(1, limit)),
+      search: cleanQuery || null,
+      genre: cleanGenre || null,
+      sort: [sort]
+    });
+    const pageData = data?.Page;
+    const raw = Array.isArray(pageData?.media) ? pageData.media : [];
     const result: AnimeSearchResult = {
-      animes: results,
-      hasNextPage: Boolean(json?.pagination?.has_next_page),
-      total: Number(json?.pagination?.items?.total) || results.length,
-      source: 'jikan'
+      animes: raw.map(mapAniListAnime),
+      hasNextPage: Boolean(pageData?.pageInfo?.hasNextPage),
+      total: Number(pageData?.pageInfo?.total) || 0,
+      source: 'anilist'
     };
-    cacheSet(cacheKey, result);
+    setCached(cacheKey, result);
     return result;
   } catch (error) {
-    console.warn('Jikan catalogue unavailable; using the bundled sample list.', error);
-    const fallback = curatedFallback(query, genre);
-    return {
-      animes: fallback.slice(0, limit),
-      hasNextPage: false,
-      total: fallback.length,
-      source: 'curated-fallback'
-    };
+    const message = error instanceof Error ? error.message : 'The anime catalogue is unavailable right now.';
+    return { animes: [], hasNextPage: false, total: 0, source: 'unavailable', error: message };
   }
 }
 
-export async function getTopAnimeList(page = 1, filterType = 'bypopularity'): Promise<Anime[]> {
-  const key = 'top:' + filterType + ':' + page;
-  const cached = cacheGet<Anime[]>(key);
-  if (cached) return cached;
-  try {
-    const params = new URLSearchParams({
-      filter: filterType,
-      page: String(page),
-      limit: '24',
-      sfw: 'true'
-    });
-    const json = await requestJikan('/top/anime?' + params.toString());
-    const list = (Array.isArray(json?.data) ? json.data : [])
-      .filter((item: any) => {
-        const rating = String(item?.rating || '');
-        return !rating.startsWith('R+') && rating !== 'Rx - Hentai';
-      })
-      .map(transformJikanAnime);
-    cacheSet(key, list);
-    return list;
-  } catch (error) {
-    console.warn('Could not load popular anime from Jikan.', error);
-    return CURATED_ANIME.slice(0, 24);
-  }
+export async function getTopAnimeList(
+  page = 1,
+  filterType: 'bypopularity' | 'score' | 'trending' | 'upcoming' = 'bypopularity'
+): Promise<Anime[]> {
+  const sort: CatalogueSort = filterType === 'score'
+    ? 'SCORE_DESC'
+    : filterType === 'trending'
+      ? 'TRENDING_DESC'
+      : filterType === 'upcoming'
+        ? 'START_DATE_DESC'
+        : 'POPULARITY_DESC';
+  const result = await searchAnimeFromApi('', 'All Genres', page, 24, sort);
+  return result.animes;
 }
 
-export interface JikanEpisodePage {
-  episodes: JikanEpisode[];
-  hasNextPage: boolean;
+async function requestJikan(path: string): Promise<any> {
+  const job = jikanQueue.then(async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const wait = Math.max(0, jikanNextAt - Date.now());
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      jikanNextAt = Date.now() + 450;
+      const response = await fetch(JIKAN_URL + path, { headers: { Accept: 'application/json' } });
+      if ((response.status === 429 || response.status === 503) && attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+        continue;
+      }
+      if (!response.ok) throw new Error('Episode guide returned HTTP ' + response.status + '.');
+      return response.json();
+    }
+    throw new Error('Episode metadata is rate-limited. Try again shortly.');
+  });
+  jikanQueue = job.then(() => undefined, () => undefined);
+  return job;
 }
 
 export async function getAnimeEpisodes(malId: number, page = 1): Promise<JikanEpisodePage> {
-  const key = 'episodes:' + malId + ':' + page;
-  const cached = cacheGet<JikanEpisodePage>(key);
+  if (!Number.isFinite(malId) || malId <= 0) return { episodes: [], hasNextPage: false };
+  const key = 'episode-guide:' + malId + ':' + page;
+  const cached = getCached<JikanEpisodePage>(key);
   if (cached) return cached;
-  const json = await requestJikan('/anime/' + encodeURIComponent(String(malId)) + '/episodes?page=' + page);
-  const episodes = (Array.isArray(json?.data) ? json.data : []).map((item: any, index: number) => ({
-    mal_id: Number(item?.mal_id) || index + 1,
+
+  const json = await requestJikan('/anime/' + encodeURIComponent(String(malId)) + '/episodes?page=' + Math.max(1, page));
+  const episodes: JikanEpisode[] = (Array.isArray(json?.data) ? json.data : []).map((item: any, index: number) => ({
+    mal_id: Number(item?.mal_id) || ((page - 1) * 100 + index + 1),
     number: Number(item?.episode) || ((page - 1) * 100 + index + 1),
     title: item?.title || 'Episode ' + ((page - 1) * 100 + index + 1),
     titleJapanese: item?.title_japanese || undefined,
@@ -291,10 +249,7 @@ export async function getAnimeEpisodes(malId: number, page = 1): Promise<JikanEp
     recap: Boolean(item?.recap),
     url: item?.url || undefined
   }));
-  const result = {
-    episodes,
-    hasNextPage: Boolean(json?.pagination?.has_next_page)
-  };
-  cacheSet(key, result);
+  const result = { episodes, hasNextPage: Boolean(json?.pagination?.has_next_page) };
+  setCached(key, result);
   return result;
 }
