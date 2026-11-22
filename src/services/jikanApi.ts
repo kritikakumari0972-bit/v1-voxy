@@ -73,16 +73,18 @@ function setCached<T>(key: string, value: T): void {
 
 function cleanDescription(value: unknown): string {
   return String(value || 'No synopsis is available from the catalogue.')
-    .replace(/<br\\s*\\/?\\s*>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(new RegExp('<br[^>]*>', 'gi'), ' ')
+    .replace(new RegExp('<[^>]*>', 'g'), ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#039;', "'")
+    .replaceAll('&nbsp;', ' ')
+    .split(String.fromCharCode(10)).join(' ')
+    .split(String.fromCharCode(13)).join(' ')
+    .split(String.fromCharCode(9)).join(' ')
+    .split(' ').filter(Boolean).join(' ')
     .trim();
 }
-
 function mapFormat(value: unknown): Anime['type'] {
   if (value === 'MOVIE') return 'Movie';
   if (value === 'OVA') return 'OVA';
