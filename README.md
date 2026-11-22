@@ -1,14 +1,15 @@
-# AniHindi / Voxy Anime
+# Voxy Anime
 
-A React + TypeScript + Vite anime discovery app.
+Voxy is a React + TypeScript + Vite anime discovery app. The interface uses live catalogue data; it does not ship a demo catalogue as a substitute when an API is unavailable.
 
 ## Features
 
-- Searchable anime metadata catalogue powered by Jikan (MyAnimeList metadata).
-- Popular anime feed, genre and format filters, and pagination.
-- Title details, official trailer links, and episode guide metadata.
-- Local watchlist and playback history for direct video sources that expose real playback time.
-- Hindi-audio and playback labels are evidence-gated. Jikan metadata alone does not prove a dub or grant streaming rights.
+- Live anime discovery, search, genre filters, trending and top-rated views powered by the public AniList GraphQL API.
+- API-derived result totals and pagination. Counts are never hard-coded.
+- Adult entries excluded from catalogue queries with AniList's `isAdult: false` filter.
+- Anime profiles, official trailer previews and a MyAnimeList episode metadata guide where an MAL ID is linked.
+- Browser-local watchlist and playback progress for approved direct video sources.
+- Full episode playback is only enabled for streams with verified rights evidence, India territory permission, free/ad-free terms, HTTPS media and a checked audio language.
 
 ## Run locally
 
@@ -21,22 +22,26 @@ npm run dev
 
 ## Render deployment
 
-This repo includes a root `render.yaml` Blueprint for a Render Static Site. It builds the Vite app and publishes `dist/`. In Render, connect the repository and apply the Blueprint.
+The root `render.yaml` Blueprint deploys the Vite frontend as a Render Static Site and publishes `dist/`. It does not require a Start or Run command.
 
-The site is static; it does not require a Node web service or a database. Jikan requests run from the browser. External API availability and rate limits are outside this app's control.
+## Catalogue and count accuracy
 
-## Rights and playback policy
+The catalogue total is read from AniList's live API response for the active search/filter. AniList documents 20,000+ anime entries; its 100,000+ figure refers to manga entries, not anime. Voxy therefore does not claim 100,000 anime titles. The live total can change as the upstream catalogue changes.
 
-No episode stream is generated from a MAL/Jikan ID. An episode source must be added by an operator only after documenting the source's streaming rights, India territory, free and ad-free terms, and the actual audio language. The player rejects entries that lack this information. The app does not scrape streams, bypass DRM, or remove paywalls.
+AniList API documentation: https://docs.anilist.co/
 
-To allow a source, add it to an Anime record with:
-- HTTPS player/media URL and HTTPS rights evidence URL.
+## Playback and rights policy
+
+AniList and MyAnimeList provide anime metadata, not episode video files or streaming permission. A trailer URL is labelled as a trailer preview. Episode names and dates are metadata only.
+
+Voxy does not scrape third-party streams, bypass DRM, remove paywalls, or infer streaming rights from an anime ID. An operator-added episode source must provide:
+- An HTTPS player/media URL and public HTTPS rights-evidence URL.
 - `rightsStatus: "verified"`.
 - `free: true` and `adFree: true`.
 - `territories` containing `"IN"` or `"*"`.
-- `audioLanguages` listing only checked audio tracks.
-- Optional ISO date `expiresAt` for time-limited permission.
+- `audioLanguages` containing only audio tracks that have been checked.
+- An optional future ISO `expiresAt` date for time-limited permission.
 
-## Data notes
+## Hindi audio labels
 
-Anime titles, scores, posters, and episode guide entries are metadata, not video files. Hindi audio appears as verified only when a public evidence page and territory have been reviewed. Unverified claims are intentionally hidden.
+The catalogue metadata API does not prove that a Hindi dub exists or that it may be streamed. Voxy shows a verified Hindi-audio label only when separate public evidence and territory details have been reviewed.
