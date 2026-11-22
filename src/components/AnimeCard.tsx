@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Bookmark, Star, Volume2 } from 'lucide-react';
+import { Bookmark, Film, Play, Star } from 'lucide-react';
 import { Anime } from '../types/anime';
 import { isHindiDubVerified } from '../services/animeTrust';
 
@@ -12,148 +12,55 @@ interface AnimeCardProps {
 }
 
 export const AnimeCard: React.FC<AnimeCardProps> = ({
-  anime,
-  onPlay,
-  onViewDetails,
-  isInWatchlist,
-  onToggleWatchlist,
+  anime, onPlay, onViewDetails, isInWatchlist, onToggleWatchlist
 }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-
-  const displayTitle = anime.titleEnglish || anime.title;
-  const isHindi = isHindiDubVerified(anime);
+  const title = anime.titleEnglish || anime.title;
+  const hindiVerified = isHindiDubVerified(anime);
 
   return (
-    <div className="group relative flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-xl overflow-hidden hover:border-slate-700 hover:shadow-xl hover:shadow-black/50 transition-all duration-300">
-      
-      {/* Poster Image Container */}
-      <div className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden cursor-pointer" onClick={() => onViewDetails(anime)}>
-        {/* Fallback container if image fails or loading */}
-        {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 bg-slate-900 animate-pulse flex items-center justify-center text-xs text-slate-600">
-            Loading...
-          </div>
-        )}
-        
-        {imageError ? (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center p-4 text-center">
-            <span className="text-rose-500 font-bold text-lg mb-1">{displayTitle.slice(0, 1)}</span>
-            <span className="text-xs text-slate-400 line-clamp-2">{displayTitle}</span>
-          </div>
-        ) : (
-          <img
-            src={anime.image}
-            alt={displayTitle}
-            referrerPolicy="no-referrer"
-            loading="lazy"
-            onLoad={() => setImageLoaded(true)}
+    <article className="group min-w-0 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#111420]/90 transition duration-300 hover:-translate-y-1 hover:border-violet-400/30 hover:shadow-xl hover:shadow-black/30">
+      <div className="relative aspect-[3/4.15] overflow-hidden bg-[#1a1d2a]">
+        {!imageError && anime.image ? (
+          <img src={anime.image} alt={title} loading="lazy" referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-          />
+            className="h-full w-full cursor-pointer object-cover transition duration-700 group-hover:scale-105"
+            onClick={() => onViewDetails(anime)} />
+        ) : (
+          <button onClick={() => onViewDetails(anime)} className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-violet-950/70 to-slate-900 p-3 text-center">
+            <Film className="h-7 w-7 text-violet-300/70" /><span className="line-clamp-3 text-xs font-bold text-slate-300">{title}</span>
+          </button>
         )}
-
-        {/* Gradient overlay for bottom readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-
-        {/* Audio Track Indicators (Clean text badges in corner) */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-          {isHindi && (
-            <span className="bg-amber-500/90 backdrop-blur-md text-slate-950 font-bold text-[10px] px-2 py-0.5 rounded tracking-wide shadow-md">
-              HINDI DUB
-            </span>
-          )}
-          <span className="bg-slate-900/80 backdrop-blur-md text-slate-200 text-[10px] px-1.5 py-0.5 rounded font-mono">
-            {anime.type}
-          </span>
-        </div>
-
-        {/* Score indicator */}
-        <div className="absolute top-2.5 right-2.5 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 text-amber-400 text-xs px-2 py-0.5 rounded flex items-center gap-1 font-semibold tabular-nums shadow-sm">
-          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-          <span>{anime.score ? anime.score.toFixed(1) : '7.5'}</span>
-        </div>
-
-        {/* Quick Hover Play Overlay */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3 p-4">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay(anime);
-            }}
-            className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-600/40 transform hover:scale-110 active:scale-95 transition-all cursor-pointer"
-            title="Open viewing options"
-          >
-            <Play className="w-5 h-5 fill-current ml-0.5" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/15" />
+        <span className="absolute left-2.5 top-2.5 rounded-md border border-white/10 bg-black/55 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-200 backdrop-blur">{anime.type}</span>
+        <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white/10 bg-black/55 px-2 py-1 text-[10px] font-bold text-amber-200 backdrop-blur">
+          <Star className="h-3 w-3 fill-current" />{anime.score > 0 ? anime.score.toFixed(1) : '—'}
+        </span>
+        {hindiVerified && <span className="absolute bottom-2.5 left-2.5 rounded-md bg-amber-300 px-2 py-1 text-[9px] font-extrabold text-slate-950">Hindi audio verified</span>}
+        <div className="absolute inset-x-0 bottom-0 flex translate-y-2 items-center justify-center gap-2 p-3 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
+          <button onClick={() => onPlay(anime)} aria-label={'Open trailer and viewing options for ' + title}
+            className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-2 text-[10px] font-bold text-white shadow-lg shadow-violet-950/50 transition hover:bg-violet-400">
+            <Play className="h-3 w-3 fill-current" /> Preview & sources
           </button>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleWatchlist(anime);
-            }}
-            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
-              isInWatchlist
-                ? 'bg-amber-500 text-slate-950 border-amber-400'
-                : 'bg-slate-900/90 text-white border-slate-700 hover:bg-slate-800'
-            }`}
-            title={isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
-          >
-            <Bookmark className={`w-4 h-4 ${isInWatchlist ? 'fill-current' : ''}`} />
+          <button onClick={() => onToggleWatchlist(anime)} aria-label={isInWatchlist ? 'Remove from saved list' : 'Save to list'}
+            className={'grid h-8 w-8 place-items-center rounded-lg border transition ' + (isInWatchlist ? 'border-amber-300 bg-amber-300 text-slate-950' : 'border-white/20 bg-black/55 text-white hover:bg-black/80')}>
+            <Bookmark className={'h-3.5 w-3.5 ' + (isInWatchlist ? 'fill-current' : '')} />
           </button>
         </div>
       </div>
 
-      {/* Card Info Content */}
-      <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between">
-        <div>
-          {/* Unboxed Metadata (NO PILLS) */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5 font-medium">
-            <span className="text-slate-300 tabular-nums">{anime.year || '2023'}</span>
-            <span aria-hidden="true">·</span>
-            <span className="tabular-nums">{anime.episodes ? `${anime.episodes} Eps` : 'Ongoing'}</span>
-            {isHindi && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="text-amber-400 font-medium">हिन्दी</span>
-              </>
-            )}
-          </div>
-
-          {/* Title */}
-          <h3
-            onClick={() => onViewDetails(anime)}
-            className="text-sm font-semibold text-white group-hover:text-rose-400 transition-colors line-clamp-2 leading-snug cursor-pointer"
-            title={displayTitle}
-          >
-            {displayTitle}
-          </h3>
-
-          {/* Hindi Title if exists */}
-          {anime.titleHindi && (
-            <p className="text-xs text-amber-300/80 line-clamp-1 mt-0.5">
-              {anime.titleHindi}
-            </p>
-          )}
+      <div className="p-3">
+        <button onClick={() => onViewDetails(anime)} className="block w-full text-left">
+          <h3 title={title} className="line-clamp-2 min-h-[2.5rem] text-xs font-bold leading-5 text-slate-100 transition group-hover:text-violet-200">{title}</h3>
+        </button>
+        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-500">
+          <span>{anime.year || 'Year unknown'}</span><span>·</span><span>{anime.episodes ? anime.episodes + ' eps' : 'Episode count unknown'}</span>
         </div>
-
-        {/* Card Footer: Genres & Action */}
-        <div className="mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-          <span className="line-clamp-1 text-[11px] text-slate-400">
-            {anime.genres.slice(0, 2).join(', ')}
-          </span>
-          <button
-            onClick={() => onPlay(anime)}
-            className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer text-xs flex items-center gap-1"
-          >
-            <span>Options</span>
-            <span>→</span>
-          </button>
+        <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-2.5">
+          <span className="line-clamp-1 text-[9px] text-slate-500">{anime.genres.slice(0, 2).join(' · ') || 'Genres not listed'}</span>
+          <button onClick={() => onViewDetails(anime)} className="shrink-0 text-[10px] font-bold text-violet-300 transition hover:text-violet-100">Details ↗</button>
         </div>
-
       </div>
-    </div>
+    </article>
   );
 };
