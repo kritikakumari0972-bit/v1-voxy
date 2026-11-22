@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, Bookmark, CheckCircle2, ChevronDown, Compass,
-  ExternalLink, Film, Flame, Loader2, Play, Search, Shuffle, Sparkles,
+  Activity, ArrowRight, Bookmark, CheckCircle2, Compass,
+  Film, Flame, Loader2, Play, Search, Shuffle, Sparkles,
   Star, X, Menu, SlidersHorizontal, AlertCircle
 } from 'lucide-react';
 import { Anime, AudioLanguage, WatchHistoryItem } from './types/anime';
@@ -40,7 +40,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [watchlist, setWatchlist] = useState<Anime[]>(() => readStorage('voxy_watchlist', []));
-  const [history, setHistory] = useState<WatchHistoryItem[]>(() => readStorage('voxy_history', []));
+  const [, setHistory] = useState<WatchHistoryItem[]>(() => readStorage('voxy_history', []));
   const [playingAnime, setPlayingAnime] = useState<Anime | null>(null);
   const [detailAnime, setDetailAnime] = useState<Anime | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -63,6 +63,7 @@ export default function App() {
       return () => { cancelled = true; };
     }
 
+    const selectedSort = SORT_FOR_VIEW[view];
     const timer = window.setTimeout(async () => {
       setLoading(true);
       setError('');
@@ -71,7 +72,7 @@ export default function App() {
         genre,
         page,
         24,
-        SORT_FOR_VIEW[view]
+        selectedSort
       );
       if (cancelled) return;
       setAnimeList(result.animes);
