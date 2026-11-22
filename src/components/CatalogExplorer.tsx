@@ -29,7 +29,7 @@ export const CatalogExplorer: React.FC<CatalogExplorerProps> = ({
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [catalogSource, setCatalogSource] = useState<'jikan' | 'curated-fallback'>('jikan');
+  const [catalogSource, setCatalogSource] = useState<'anilist' | 'unavailable'>('jikan');
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
@@ -86,7 +86,7 @@ export const CatalogExplorer: React.FC<CatalogExplorerProps> = ({
         <div className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-1">Anime database</div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Explore anime and movies</h2>
         <p className="text-sm text-slate-400 mt-2 max-w-3xl">
-          Search the live MyAnimeList metadata catalogue through Jikan. Catalogue entries do not imply a Hindi dub or a playable stream.
+          Search the live AniList anime catalogue. Catalogue entries do not imply a Hindi dub or a playable stream.
         </p>
       </div>
 
@@ -143,11 +143,11 @@ export const CatalogExplorer: React.FC<CatalogExplorerProps> = ({
       <div className="flex items-center justify-between gap-3 mb-5 text-xs text-slate-400">
         <div>
           {loading ? 'Loading catalogue…' : 'Showing '}
-          {!loading && <><strong className="text-white">{filteredList.length}</strong> of {totalCount.toLocaleString()} API results</>}
+          {!loading && <><strong className="text-white">{filteredList.length}</strong> of {totalCount.toLocaleString()} catalogue matches</>}
           {searchQuery && !loading && <> for “{searchQuery}”</>}
         </div>
         <div className="flex items-center gap-2">
-          {catalogSource === 'curated-fallback' && <span className="text-amber-300">Offline sample list</span>}
+          {catalogSource === 'unavailable' && <span className="text-amber-300">Live API unavailable · no demo data</span>}
           {loading && <Loader2 className="w-4 h-4 animate-spin text-rose-400" />}
           <button onClick={() => setPage(1)} className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white" aria-label="Refresh catalogue">
             <RefreshCw className="w-3.5 h-3.5" />
