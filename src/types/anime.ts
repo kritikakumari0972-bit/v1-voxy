@@ -48,6 +48,13 @@ export interface Episode {
   hindiSources?: HindiSource[];
 }
 
+export interface OfficialStreamingEpisode {
+  title?: string;
+  thumbnail?: string;
+  url: string;
+  site?: string;
+}
+
 export interface Anime {
   id: number;
   mal_id: number;
@@ -85,6 +92,8 @@ export interface Anime {
     qualityRating?: number;
   };
   streams?: StreamSource[];
+  /** Outbound legal episode destinations returned by AniList; availability can vary by region. */
+  officialEpisodes?: OfficialStreamingEpisode[];
 }
 
 export interface WatchHistoryItem {
