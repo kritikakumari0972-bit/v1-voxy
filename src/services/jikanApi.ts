@@ -30,6 +30,7 @@ query VoxyAnimeCatalogue($page: Int, $perPage: Int, $search: String, $genre: Str
       genres
       studios(isMain: true) { nodes { name isAnimationStudio } }
       trailer { id site }
+      streamingEpisodes { title thumbnail url site }
     }
   }
 }`;
@@ -127,7 +128,19 @@ function mapAniListAnime(item: any): Anime {
     trailerYoutubeId: trailerId,
     trailerEmbedUrl: trailerId ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(trailerId) : undefined,
     hindiDub: { isAvailable: false, verificationStatus: 'unverified' },
-    streams: []
+    streams: [],
+    officialEpisodes: Array.isArray(item?.streamingEpisodes)
+      ? item.streamingEpisodes
+          .filter((episode: any) => {
+            try { return new URL(String(episode?.url || '')).protocol === 'https:'; } catch { return false; }
+          })
+          .map((episode: any) => ({
+            title: episode?.title ? String(episode.title) : undefined,
+            thumbnail: episode?.thumbnail ? String(episode.thumbnail) : undefined,
+            url: String(episode.url),
+            site: episode?.site ? String(episode.site) : undefined
+          }))
+      : []
   };
 }
 
