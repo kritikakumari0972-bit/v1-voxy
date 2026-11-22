@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, ArrowLeft, Bookmark, CalendarDays, CheckCircle2, ExternalLink,
-  Info, Loader2, Play, ShieldCheck, X
+  Info, Loader2, Play, ShieldCheck, X, Film
 } from 'lucide-react';
 import { Anime, AudioLanguage } from '../types/anime';
 import { getAnimeEpisodes, JikanEpisode } from '../services/jikanApi';
