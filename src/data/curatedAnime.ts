@@ -20,3 +20,14 @@ export const GENRES_LIST = [
   'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life',
   'Sports', 'Supernatural', 'Thriller'
 ];
+
+/** Static day labels only; no release times or titles are invented. */
+export const SCHEDULE_DAYS: Array<{ day: string; dayHindi: string; animes: string[] }> = [
+  { day: 'Monday', dayHindi: 'सोमवार', animes: [] },
+  { day: 'Tuesday', dayHindi: 'मंगलवार', animes: [] },
+  { day: 'Wednesday', dayHindi: 'बुधवार', animes: [] },
+  { day: 'Thursday', dayHindi: 'गुरुवार', animes: [] },
+  { day: 'Friday', dayHindi: 'शुक्रवार', animes: [] },
+  { day: 'Saturday', dayHindi: 'शनिवार', animes: [] },
+  { day: 'Sunday', dayHindi: 'रविवार', animes: [] }
+];
